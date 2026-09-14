@@ -1,0 +1,59 @@
+/*
+ * 通过稳定的 .composer-editable 标记定位整个聊天输入框。
+ * 注册角度变量后旋转 conic-gradient，使颜色沿四周连续流动；
+ * mask 只保留 2px 边界区域，不遮挡输入内容和工具栏。
+ * padding 使用 !important，避免宿主较高 CSS 层的全局 reset 清零。
+ */
+@property --composer-rainbow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+div:has(> .composer-editable),
+div:has(> .composer-editable):hover,
+div:has(> .composer-editable):focus-within {
+  position: relative !important;
+  isolation: isolate;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+div:has(> .composer-editable)::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  padding: 2px !important;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--composer-rainbow-angle),
+    #ff3b30 0deg,
+    #ff9500 40deg,
+    #ffd60a 80deg,
+    #34c759 120deg,
+    #00c7be 160deg,
+    #32ade6 200deg,
+    #007aff 240deg,
+    #5856d6 280deg,
+    #af52de 320deg,
+    #ff2d55 345deg,
+    #ff3b30 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: composer-rainbow-border-flow 3s linear infinite !important;
+}
+
+@keyframes composer-rainbow-border-flow {
+  to {
+    --composer-rainbow-angle: 360deg;
+  }
+}
