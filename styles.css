@@ -1,11 +1,18 @@
 /*
- * 通过稳定的 .composer-editable 标记定位整个聊天输入框。
- * 仅在当前对话处于运行中（Streaming / AI 生成）状态时展示彩虹跑马灯：
- * 1. [data-streaming="true"]：宿主在运行中赋予 Composer 外层容器的标准属性。
- * 2. :has(.lucide-circle-stop)：运行中右下角切换为「停止」按钮的图标标记（向下兼容旧版宿主）。
- * 注册角度变量后旋转 conic-gradient，使颜色沿四周连续流动；
- * mask 只保留 2px 边界区域，不遮挡输入内容和工具栏。
- * padding 使用 !important，避免宿主较高 CSS 层的全局 reset 清零。
+ * 彩虹跑马灯边界线 (composer-rainbow-border)
+ *
+ * 1. 运行中跑马灯（Streaming / AI 生成中）：
+ *    - 聊天输入框（Composer）：2px 沿边界流动彩虹跑马灯。
+ *    - 顶部会话页签（Tab）：1px 沿边界流动彩虹跑马灯，纤细精致不遮挡文字。
+ *
+ * 2. 完成未读提醒（Unseen / 后台会话生成完毕）：
+ *    - 当后台会话运行结束，用户尚未点击查看该页签时，呈现 1px 绿色边框并在边框附近向内轻微发散呼吸微光（不铺满底色）。
+ *    - 用户点击查看后，状态自动清除，恢复常规页签外观。
+ *
+ * 技术实现：
+ * - 注册 @property 角度变量后旋转 conic-gradient，使彩虹色沿四周连续流动。
+ * - 使用 mask / -webkit-mask 保留边界区域，不遮挡输入内容和页签文字。
+ * - 完成提醒使用 inset box-shadow 仅在边框内沿做呼吸弥散，不占用页签底色。
  */
 @property --composer-rainbow-angle {
   syntax: "<angle>";
@@ -13,6 +20,7 @@
   initial-value: 0deg;
 }
 
+/* 聊天输入框外层容器运行中状态 */
 div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-editable),
 div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-editable):hover,
 div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-editable):focus-within {
@@ -22,12 +30,18 @@ div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-edita
   box-shadow: none !important;
 }
 
-div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-editable)::after {
+/* 顶部会话页签运行中状态 */
+div[data-tab-key]:is([data-streaming="true"], :has(.sidebar-thread-status-processing)) {
+  position: relative !important;
+  isolation: isolate;
+}
+
+/* 运行中跑马灯公共动效及渐变遮罩 */
+div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-editable)::after,
+div[data-tab-key]:is([data-streaming="true"], :has(.sidebar-thread-status-processing))::after {
   content: "";
   position: absolute;
-  inset: -1px;
   z-index: 2;
-  padding: 2px !important;
   border-radius: inherit;
   pointer-events: none;
   background: conic-gradient(
@@ -55,8 +69,39 @@ div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-edita
   animation: composer-rainbow-border-flow 3s linear infinite !important;
 }
 
+/* 输入框本身有 1px 边框，inset: -1px 刚好覆盖常规边框，厚度 2px */
+div:is([data-streaming="true"], :has(.lucide-circle-stop)):has(> .composer-editable)::after {
+  inset: -1px;
+  padding: 2px !important;
+}
+
+/* 会话页签无边框且位于横向滚动区域内，inset: 0 精确贴合页签边缘，厚度 1px 纤细精致 */
+div[data-tab-key]:is([data-streaming="true"], :has(.sidebar-thread-status-processing))::after {
+  inset: 0;
+  padding: 1px !important;
+}
+
 @keyframes composer-rainbow-border-flow {
   to {
     --composer-rainbow-angle: 360deg;
+  }
+}
+
+/* 会话完成且未查看：1px 绿色边框并在边框附近向内浅发散舒缓呼吸微光（不占满内部，点击进入后自动清除） */
+div[data-tab-key]:is([data-unseen="true"], :has(.sidebar-thread-status-unseen)) {
+  position: relative !important;
+  animation: tab-unseen-breathe 2.8s ease-in-out infinite !important;
+}
+
+@keyframes tab-unseen-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--color-status-unseen, #22c55e) 35%, transparent),
+      inset 0 0 2px 0px color-mix(in srgb, var(--color-status-unseen, #22c55e) 10%, transparent);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px var(--color-status-unseen, #22c55e),
+      inset 0 0 7px 1px color-mix(in srgb, var(--color-status-unseen, #22c55e) 70%, transparent);
   }
 }
